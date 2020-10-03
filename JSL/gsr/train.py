@@ -54,7 +54,7 @@ def main(args=None):
 	dataloader_train, dataset_train, dataloader_val, dataset_val = init_data(parser, verb_orders)
 	print("loading model")
 	retinanet = model.resnet50(num_classes=dataset_train.num_classes(), num_nouns=dataset_train.num_nouns(), parser=parser, pretrained=True)
-	retinanet = torch.nn.DataParallel(retinanet).cuda()
+	retinanet = torch.nn.DataParallel(retinanet).to(device)
 	optimizer = optim.Adam(retinanet.parameters(), lr=parser.lr)
 
 	print('weights loaded')
@@ -98,11 +98,11 @@ def train(retinanet, optimizer, dataloader_train, parser, epoch_num, writer):
 	for iter_num, data in enumerate(dataloader_train):
 		i += 1
 		optimizer.zero_grad()
-		image = data['img'].cuda().float()
-		annotations = data['annot'].cuda().float()
-		verbs = data['verb_idx'].cuda()
-		widths = data['widths'].cuda()
-		heights = data['heights'].cuda()
+		image = data['img'].to(device).float()
+		annotations = data['annot'].to(device).float()
+		verbs = data['verb_idx'].to(device)
+		widths = data['widths'].to(device)
+		heights = data['heights'].to(device)
 
 		class_loss, reg_loss, bbox_loss, all_noun_loss = retinanet(image, annotations, verbs, widths, heights, epoch_num, deatch_resnet, use_gt_nouns)
 
@@ -150,11 +150,11 @@ def evaluate(retinanet, dataloader_val, parser, dataset_val, dataset_train, verb
 		if k % 100 == 0:
 			print(str(k) + " out of " + str(len(dataset_val) / parser.batch_size))
 		k += 1
-		x = data['img'].cuda().float()
-		y = data['verb_idx'].cuda()
-		widths = data['widths'].cuda()
-		heights = data['heights'].cuda()
-		annotations = data['annot'].cuda().float()
+		x = data['img'].to(device).float()
+		y = data['verb_idx'].to(device)
+		widths = data['widths'].to(device)
+		heights = data['heights'].to(device)
+		annotations = data['annot'].to(device).float()
 		shift_1 = data['shift_1']
 		shift_0 = data['shift_0']
 

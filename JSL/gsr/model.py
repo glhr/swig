@@ -16,7 +16,7 @@ from torch.autograd import Variable
 #from bbox_features import BoxFeatures
 from global_utils.resnet import ResNet
 
-
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 model_urls = {
     'resnet18': 'https://download.pytorch.org/models/resnet18-5c106cde.pth',
@@ -273,9 +273,9 @@ class ResNet_RetinaNet_RNN(nn.Module):
         features.pop(0)  # SARAH - remove feature batch
 
         # init LSTM inputs
-        hx, cx = torch.zeros(batch_size, self.hidden_size).cuda(), torch.zeros(batch_size, self.hidden_size).cuda()
-        previous_word = torch.zeros(batch_size, 512).cuda(x.device)
-        roi_features = torch.zeros(batch_size, 2048).cuda(x.device)
+        hx, cx = torch.zeros(batch_size, self.hidden_size).to(device), torch.zeros(batch_size, self.hidden_size).to(device)
+        previous_word = torch.zeros(batch_size, 512).to(device)
+        roi_features = torch.zeros(batch_size, 2048).to(device)
 
         # init losses
         all_class_loss = 0
@@ -325,7 +325,7 @@ class ResNet_RetinaNet_RNN(nn.Module):
             if self.training:
                 for noun_index in range(4, 7):
                     noun_gt = annotations[torch.arange(batch_size), i, noun_index]
-                    noun_loss += self.loss_function(noun_pred, noun_gt.squeeze().long().cuda())
+                    noun_loss += self.loss_function(noun_pred, noun_gt.squeeze().long().to(device))
 
             if self.training and use_gt_nouns:
                 ground_truth_1 = self.noun_embedding(annotations[:, i, 4].long())
@@ -400,7 +400,7 @@ class ResNet_RetinaNet_RNN(nn.Module):
         boxes_copy[:, 2] = (boxes_copy[:, 2]*features_heights) / picture_height
         boxes_copy[:, 1] = (boxes_copy[:, 1]*features_width) / picture_width
         boxes_copy[:, 3] = (boxes_copy[:, 3]*features_width) / picture_width
-        batch = torch.arange(boxes_copy.shape[0]).unsqueeze(1).cuda().float()
+        batch = torch.arange(boxes_copy.shape[0]).unsqueeze(1).to(device).float()
         box_input = torch.cat((batch, boxes_copy), dim=1)
         roi_align_output = ops.roi_align(features, box_input, (1,1)).squeeze()
         roi_align_output[boxes[:, 0] == -1, :] = F.adaptive_avg_pool2d(features, (1,1)).squeeze()[boxes[:, 0] == -1, :]
@@ -481,4 +481,3 @@ def resnet50(num_classes, num_nouns, parser, pretrained=False, **kwargs):
         state_dict['fc.bias'] = x.bias
         model.load_state_dict(state_dict, strict=False)
     return model
-

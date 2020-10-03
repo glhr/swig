@@ -13,6 +13,7 @@ from JSL.gsr.dataloader import CSVDataset, collater, Resizer, AspectRatioBasedSa
 from torch.utils.data import Dataset, DataLoader
 import pdb
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def main():
 
@@ -55,8 +56,8 @@ def main():
     test_dataset = imSituDatasetGood(verb_to_idx, args.image_file, inference=True, is_train=False)
     test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, **kwargs)
     model = ImsituVerb()
-    model = torch.nn.DataParallel(model).cuda()
-    x = torch.load(args.verb_path)
+    model = torch.nn.DataParallel(model).to(device)
+    x = torch.load(args.verb_path, map_location=device)
     model.module.load_state_dict(x['state_dict'])
     results = eval(model, test_dataloader, idx_to_verb, args)
 
@@ -70,12 +71,12 @@ def main():
     dataset_val = CSVDataset(train_file=args.image_file, class_list='./global_utils/train_classes.csv', inference=True, inference_verbs=results,
                              verb_info=verb_orders, is_training=False, transform=transforms.Compose([Normalizer(), Resizer(False)]))
     sampler_val = AspectRatioBasedSampler(dataset_val, batch_size=args.batch_size, drop_last=True)
-    dataloader_val = DataLoader(dataset_val, num_workers=64, collate_fn=collater, batch_sampler=sampler_val)
+    dataloader_val = DataLoader(dataset_val, num_workers=64 if torch.cuda.is_available() else 0, collate_fn=collater, batch_sampler=sampler_val)
 
     print("loading weights")
     retinanet = jsl_model.resnet50(num_classes=dataset_val.num_classes(), num_nouns=dataset_val.num_nouns(), parser=args, pretrained=True)
-    retinanet = torch.nn.DataParallel(retinanet).cuda()
-    x = torch.load(args.jsl_path)
+    retinanet = torch.nn.DataParallel(retinanet).to(device)
+    x = torch.load(args.jsl_path, map_location=device)
     retinanet.module.load_state_dict(x['state_dict'], strict = False)
     print('weights loaded')
 
@@ -92,11 +93,11 @@ def evaluate(retinanet, dataloader_val, parser, dataset_val, dataset_train, verb
         if k % 100 == 0:
             print(str(k) + " out of " + str(len(dataset_val) / parser.batch_size))
         k += 1
-        x = data['img'].cuda().float()
-        y = data['verb_idx'].cuda()
-        widths = data['widths'].cuda()
-        heights = data['heights'].cuda()
-        annotations = data['annot'].cuda().float()
+        x = data['img'].to(device).float()
+        y = data['verb_idx'].to(device)
+        widths = data['widths'].to(device)
+        heights = data['heights'].to(device)
+        annotations = data['annot'].to(device).float()
         shift_1 = data['shift_1']
         shift_0 = data['shift_0']
 
@@ -157,7 +158,7 @@ def eval(model, data_loader, idx_to_verb, parser):
             if k % 100 == 0:
                 print(str(k) + " out of " + str(len(data_loader) / parser.batch_size))
             words = sample["im_name"]
-            image_names = (sample["image"].cuda())
+            image_names = (sample["image"].to(device))
             verb, top_5_verb = model(1, image_names, False, is_train=False)
             for i in range(len(words)):
                 results[words[i]] = int(verb[i])
@@ -235,8 +236,3 @@ def save_checkpoint(state, filename="checkpoint.pth.tar"):
 
 if __name__ == "__main__":
     main()
-
-
-
-
-

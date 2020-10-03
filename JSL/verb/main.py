@@ -12,6 +12,7 @@ import pdb
 import os
 import json
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--title", type=str, default=None)
@@ -53,7 +54,7 @@ def main():
 
     print(sum([p.numel() for p in model.parameters()]))
 
-    model = torch.nn.DataParallel(model).cuda()
+    model = torch.nn.DataParallel(model).to(device)
 
     lr = args.lr
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
@@ -195,8 +196,3 @@ def save_checkpoint(state, filename="checkpoint.pth.tar"):
 
 if __name__ == "__main__":
     main()
-
-
-
-
-

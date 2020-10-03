@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import pdb
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class Anchors(nn.Module):
     def __init__(self, pyramid_levels=None, strides=None, sizes=None, ratios=None, scales=None):
@@ -20,7 +21,7 @@ class Anchors(nn.Module):
             self.scales = np.array([2 ** 0])
 
     def forward(self, image):
-        
+
         image_shape = image.shape[2:]
         image_shape = np.array(image_shape)
 
@@ -39,7 +40,7 @@ class Anchors(nn.Module):
 
         all_anchors = np.expand_dims(all_anchors, axis=0)
 
-        return torch.from_numpy(all_anchors.astype(np.float32)).cuda()
+        return torch.from_numpy(all_anchors.astype(np.float32)).to(device)
 
 def generate_anchors(base_size=16, ratios=None, scales=None):
     """
@@ -131,4 +132,3 @@ def shift(shape, stride, anchors):
     all_anchors = all_anchors.reshape((K * A, 4))
 
     return all_anchors
-

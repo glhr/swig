@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import numpy as np
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 def conv3x3(in_planes, out_planes, stride=1):
     """3x3 convolution with padding"""
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
@@ -97,10 +99,10 @@ class BBoxTransform(nn.Module):
         ctr_x   = boxes[:, :, 0] + 0.5 * widths
         ctr_y   = boxes[:, :, 1] + 0.5 * heights
 
-        dx = deltas[:, :, 0] * self.std[0].cuda() + self.mean[0].cuda()
-        dy = deltas[:, :, 1] * self.std[1].cuda() + self.mean[1].cuda()
-        dw = deltas[:, :, 2] * self.std[2].cuda() + self.mean[2].cuda()
-        dh = deltas[:, :, 3] * self.std[3].cuda() + self.mean[3].cuda()
+        dx = deltas[:, :, 0] * self.std[0].to(device) + self.mean[0].to(device)
+        dy = deltas[:, :, 1] * self.std[1].to(device) + self.mean[1].to(device)
+        dw = deltas[:, :, 2] * self.std[2].to(device) + self.mean[2].to(device)
+        dh = deltas[:, :, 3] * self.std[3].to(device) + self.mean[3].to(device)
 
         pred_ctr_x = ctr_x + dx * widths
         pred_ctr_y = ctr_y + dy * heights
@@ -131,5 +133,5 @@ class ClipBoxes(nn.Module):
 
         boxes[:, :, 2] = torch.clamp(boxes[:, :, 2], max=width)
         boxes[:, :, 3] = torch.clamp(boxes[:, :, 3], max=height)
-      
+
         return boxes
